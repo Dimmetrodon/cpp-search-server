@@ -36,3 +36,4 @@
 *.vcxproj.filters
 *.vcxproj.user
 *Debug
+/search-server/.vs/cpp-search-server
