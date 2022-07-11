@@ -13,7 +13,7 @@
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
-const double EPSILON = 1e-6;
+const double EPSILON = 1e-6; //Число для сравнения double чисел
 
 string ReadLine() 
 {
@@ -30,6 +30,7 @@ int ReadLineWithNumber()
     return result;
 }
 
+//Дробит строку в слова
 vector<string> SplitIntoWords(const string& text) 
 {
     vector<string> words;
@@ -57,6 +58,7 @@ vector<string> SplitIntoWords(const string& text)
     return words;
 }
 
+//Структура id, релевантность, рейтинг
 struct Document 
 {
     int id;
@@ -75,6 +77,7 @@ enum class DocumentStatus
 class SearchServer 
 {
 public:
+    //Добавляет в stop_words_ стоп-слова
     void SetStopWords(const string& text) 
     {
         for (const string& word : SplitIntoWords(text)) 
@@ -83,6 +86,7 @@ public:
         }
     }
 
+    //Добавляет в documents_ id, средний рейтинг, статус
     void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings) 
     {
         const vector<string> words = SplitIntoWordsNoStop(document);
@@ -99,6 +103,7 @@ public:
             });
     }
 
+    //Сортирует и возвращает 5 лучших по релевантности документа
     template <typename Suitability>
     vector<Document> FindTopDocuments(const string& raw_query, Suitability suitability) const
     {
@@ -124,11 +129,13 @@ public:
         return matched_documents;
     }
 
+    //Сортирует и возвращает 5 лучших по релевантности документа
     vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus check_status = DocumentStatus::ACTUAL) const
     {
         return FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
     }
 
+    //Возвращает длину documents_
     int GetDocumentCount() const 
     {
         return documents_.size();
@@ -165,21 +172,27 @@ public:
     }
 
 private:
+    //Структура рейтинг, DocumentStatus(DocumentStatus::actuall,DocumentStatus::banned...)
     struct DocumentData 
     {
         int rating;
         DocumentStatus status;
     };
 
+    //Множество стоп-слов
     set<string> stop_words_;
+    //Словарь слово - словарь(id,частота встречи в документах)
     map<string, map<int, double>> word_to_document_freqs_;
+    //Словарь id - DocumentData(рейтинг, статус)
     map<int, DocumentData> documents_;
 
+    //Является ли стоп-словом
     bool IsStopWord(const string& word) const 
     {
         return stop_words_.count(word) > 0;
     }
 
+    //Из строки в вектор слов, исключая стоп-слова
     vector<string> SplitIntoWordsNoStop(const string& text) const 
     {
         vector<string> words;
@@ -193,6 +206,7 @@ private:
         return words;
     }
 
+    //Возвращает средний рейтинг
     static int ComputeAverageRating(const vector<int>& ratings) 
     {
         if (ratings.empty()) 
@@ -203,6 +217,7 @@ private:
         return rating_sum / static_cast<int>(ratings.size());
     }
 
+    //Структура слово - bool(минус-слово) - bool(плюс-слово)
     struct QueryWord 
     {
         string data;
@@ -210,6 +225,7 @@ private:
         bool is_stop;
     };
 
+    //Принимает слово. Возвращает структуру слово - bool(минус-слово) - bool(плюс-слово)
     QueryWord ParseQueryWord(string text) const 
     {
         bool is_minus = false;
@@ -227,12 +243,14 @@ private:
         };
     }
 
+    //Структура множество плюс-слов - множество минус-слов
     struct Query 
     {
         set<string> plus_words;
         set<string> minus_words;
     };
 
+    //Делает из строки множества плюс и минус слов
     Query ParseQuery(const string& text) const 
     {
         Query query;
