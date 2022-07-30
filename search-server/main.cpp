@@ -88,8 +88,6 @@ enum class DocumentStatus
 
 class SearchServer
 {
-    inline static constexpr int INVALID_DOCUMENT_ID = -1;
-
 public:
 
     SearchServer() = default;
@@ -97,17 +95,14 @@ public:
     // онструктор дл€ string стоп-слов
     explicit SearchServer(const string& stop_words)
     {
-        /* —пециально сделал проверку на валидность до начала основного тела функции,
-        потому что при невалидном запросе сначала произойдет проверка и затратис€ меньше ресурсов программой.
-        ≈сли же проверку переместить в цикл прохождени€ по каждому слову, то придетс€ перед ошибкой дополнительно
-        зайти в функцию по разделению строки на вектор строк и каждое валидное слово перед невалидным добавл€ть в 
-        множетсво стоп-слов. –азве мой вариант не оптимален?
-        */
-        if (!IsValidString(stop_words)) 
-        {
-            throw invalid_argument("Forbidden symbols entered"s);
-        }
         vector<string> stop_words_vector = SplitIntoWords(stop_words);
+        for (const string& word : stop_words_vector)
+        {
+            if (!IsValidString(word))
+            {
+                throw invalid_argument("Forbidden symbols entered"s);
+            }
+        }
         for (const string& word : stop_words_vector)
         {
             stop_words_.insert(word);
@@ -160,6 +155,7 @@ public:
         {
             word_to_document_freqs_[word][document_id] += inv_word_count;
         }
+        documents_ids_.push_back(document_id);
         documents_.emplace(document_id,
             DocumentData
             {
@@ -246,16 +242,7 @@ public:
         {
             throw out_of_range("Invalid index"s);
         }
-        int i = 0;
-        for (const auto& [id, doc_data] : documents_)
-        {
-            if (i == index)
-            {
-                return id;
-            }
-            ++i;
-        }
-        return INVALID_DOCUMENT_ID;
+        return documents_ids_[index];
     }
 
 private:
@@ -268,10 +255,11 @@ private:
 
     set<string> stop_words_; //ћножество стоп-слов
 
-    map<string, map<int, double>> word_to_document_freqs_; //—ловарь слово - словарь(id,частота встречи в документах)
+    map<string, map<int, double>> word_to_document_freqs_; //—ловарь: слово - словарь(id,частота встречи в документах)
 
-    map<int, DocumentData> documents_; //—ловарь id - DocumentData(рейтинг, статус)
+    map<int, DocumentData> documents_; //—ловарь: id - DocumentData(рейтинг, статус)
 
+    vector<int> documents_ids_; // ¬ектор идентификаторов хран€щий их по пор€дку добавлени€
 
     bool MultipleMinuses(const string& text) const
     {
@@ -322,9 +310,9 @@ private:
 
     static bool IsValidString(const string& text) 
     {
-        return (none_of(text.begin(), text.end(), [text](char x)
+        return (none_of(text.begin(), text.end(), [](char x)
             {
-                if ((x < 32) && (x > 0))
+                if ((x > 0) && (x < 32))
                     return true;
                 return false;
             }));        
