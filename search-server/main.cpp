@@ -97,7 +97,13 @@ public:
     //Конструктор для string стоп-слов
     explicit SearchServer(const string& stop_words)
     {
-        if (!IsValidString(stop_words))
+        /* Специально сделал проверку на валидность до начала основного тела функции,
+        потому что при невалидном запросе сначала произойдет проверка и затратися меньше ресурсов программой.
+        Если же проверку переместить в цикл прохождения по каждому слову, то придется перед ошибкой дополнительно
+        зайти в функцию по разделению строки на вектор строк и каждое валидное слово перед невалидным добавлять в 
+        множетсво стоп-слов. Разве мой вариант не оптимален?
+        */
+        if (!IsValidString(stop_words)) 
         {
             throw invalid_argument("Forbidden symbols entered"s);
         }
@@ -136,7 +142,7 @@ public:
     //Добавляет в documents_ id, средний рейтинг, статус
     void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings)
     {
-        if (documents_.count(document_id))
+        if (documents_.count(document_id) == 1)
         {
             throw invalid_argument("id is taken"s);
         }
@@ -166,19 +172,6 @@ public:
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate predicate) const
     {
-        if (MultipleMinuses(raw_query))
-        {
-            throw invalid_argument("Multiple minuses"s);
-        }
-        else if (!NoTextAfterMinus(raw_query))
-        {
-            throw invalid_argument("No text after minus"s);
-        }
-        else if (!IsValidString(raw_query))
-        {
-            throw invalid_argument("Frobidden symbols"s);
-        }
-
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, predicate);
 
@@ -219,19 +212,6 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const
     {
-        if (!NoTextAfterMinus(raw_query))
-        {
-            throw invalid_argument("No text after minus"s);
-        }
-        else if (!IsValidString(raw_query))
-        {
-            throw invalid_argument("Forbidden symbols"s);
-        }
-        else if (MultipleMinuses(raw_query))
-        {
-            throw invalid_argument("Multiple minuses"s);
-        }
-
         const Query query = ParseQuery(raw_query);
         vector<string> matched_words;
         for (const string& word : query.plus_words)
@@ -316,11 +296,12 @@ private:
 
     bool NoTextAfterMinus(const string& text) const
     {
-        if (text.back() == '-')
+        if ((text.back() == '-') || (text == "-"s))
         {
             return false;
         }
-        bool prev_minus = false;
+        return true;
+        /*bool prev_minus = false;
         for (char character : text)
         {
             if (character == '-')
@@ -336,7 +317,7 @@ private:
                 prev_minus = false;
             }
         }
-        return true;
+        return true;*/
     }
 
     static bool IsValidString(const string& text) 
@@ -386,20 +367,33 @@ private:
         bool is_stop;
     };
 
-    QueryWord ParseQueryWord(string text) const
+    QueryWord ParseQueryWord(string word) const
     {
+        if (!NoTextAfterMinus(word))
+        {
+            throw invalid_argument("No text after minus"s);
+        }
+        else if (MultipleMinuses(word))
+        {
+            throw invalid_argument("Multiple minuses"s);
+        }
+        else if (!IsValidString(word))
+        {
+            throw invalid_argument("Forbidden symbols"s);
+        }
+
         bool is_minus = false;
         // Word shouldn't be empty
-        if (text[0] == '-')
+        if (word[0] == '-')
         {
             is_minus = true;
-            text = text.substr(1);
+            word = word.substr(1);
         }
         return
         {
-            text,
+            word,
             is_minus,
-            IsStopWord(text)
+            IsStopWord(word)
         };
     }
 
@@ -544,58 +538,58 @@ private:
 
 // ------------- Assert -------------
 
-template <typename T, typename U>
-void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
-    const string& func, unsigned line, const string& hint)
-{
-    if (t != u)
-    {
-        cerr << boolalpha;
-        cerr << file << "("s << line << "): "s << func << ": "s;
-        cerr << "ASSERT_EQUAL("s << t_str << ", "s << u_str << ") failed: "s;
-        cerr << t << " != "s << u << "."s;
-        if (!hint.empty())
-        {
-            cerr << " Hint: "s << hint;
-        }
-        cerr << endl;
-        abort();
-    }
-}
-
-#define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
-
-#define ASSERT_EQUAL_HINT(a, b, hint) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, (hint))
-
-void AssertImpl(bool value, const string& expr_str, const string& file, const string& func, unsigned line,
-    const string& hint)
-{
-    if (!value)
-    {
-        cerr << file << "("s << line << "): "s << func << ": "s;
-        cerr << "ASSERT("s << expr_str << ") failed."s;
-        if (!hint.empty())
-        {
-            cerr << " Hint: "s << hint;
-        }
-        cerr << endl;
-        abort();
-    }
-}
-
-#define ASSERT(expr) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, ""s)
-
-#define ASSERT_HINT(expr, hint) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
-
-
-template <typename Function>
-void RunTestImpl(Function function, const string& func_name)
-{
-    function();
-    cerr << func_name << " OK"s << endl;
-}
-
-#define RUN_TEST(function) RunTestImpl((function), #function)
+//template <typename T, typename U>
+//void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
+//    const string& func, unsigned line, const string& hint)
+//{
+//    if (t != u)
+//    {
+//        cerr << boolalpha;
+//        cerr << file << "("s << line << "): "s << func << ": "s;
+//        cerr << "ASSERT_EQUAL("s << t_str << ", "s << u_str << ") failed: "s;
+//        cerr << t << " != "s << u << "."s;
+//        if (!hint.empty())
+//        {
+//            cerr << " Hint: "s << hint;
+//        }
+//        cerr << endl;
+//        abort();
+//    }
+//}
+//
+//#define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
+//
+//#define ASSERT_EQUAL_HINT(a, b, hint) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, (hint))
+//
+//void AssertImpl(bool value, const string& expr_str, const string& file, const string& func, unsigned line,
+//    const string& hint)
+//{
+//    if (!value)
+//    {
+//        cerr << file << "("s << line << "): "s << func << ": "s;
+//        cerr << "ASSERT("s << expr_str << ") failed."s;
+//        if (!hint.empty())
+//        {
+//            cerr << " Hint: "s << hint;
+//        }
+//        cerr << endl;
+//        abort();
+//    }
+//}
+//
+//#define ASSERT(expr) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, ""s)
+//
+//#define ASSERT_HINT(expr, hint) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
+//
+//
+//template <typename Function>
+//void RunTestImpl(Function function, const string& func_name)
+//{
+//    function();
+//    cerr << func_name << " OK"s << endl;
+//}
+//
+//#define RUN_TEST(function) RunTestImpl((function), #function)
 
 // ------------- Assert end -------------
 
@@ -612,13 +606,14 @@ void RunTestImpl(Function function, const string& func_name)
 //    ASSERT_EQUAL(server.FindTopDocuments("city --cat"s, result), false);
 //    ASSERT_EQUAL(server.FindTopDocuments("cat-city"s, result), true);
 //}
-
-
-// Функция TestSearchServer является точкой входа для запуска тестов
-void TestSearchServer()
-{
-    //RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
-}
+//
+//
+//// Функция TestSearchServer является точкой входа для запуска тестов
+//
+//void TestSearchServer()
+//{
+//    //RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
+//}
 
 // --------- Окончание модульных тестов поисковой системы -----------
 
@@ -643,8 +638,7 @@ void PrintMatchDocumentResult(int document_id, const vector<string>& words, Docu
     cout << "}"s << endl;
 }
 
-void AddDocument(SearchServer& search_server, int document_id, const string& document, DocumentStatus status,
-    const vector<int>& ratings) 
+void AddDocument(SearchServer& search_server, int document_id, const string& document, DocumentStatus status, const vector<int>& ratings) 
 {
     try {
         search_server.AddDocument(document_id, document, status, ratings);
