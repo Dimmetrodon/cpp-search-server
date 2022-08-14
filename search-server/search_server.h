@@ -19,6 +19,8 @@ enum class DocumentStatus
     REMOVED
 };
 
+
+
 class SearchServer
 {
 public:
@@ -53,39 +55,11 @@ public:
 
     //Сортирует и возвращает 5 лучших по релевантности документа
     template <typename DocumentPredicate>
-    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const
-    {
-        const Query query = ParseQuery(raw_query);
-        auto matched_documents = FindAllDocuments(query, predicate);
+    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const;
 
-        sort(matched_documents.begin(), matched_documents.end(),
-            [](const Document& lhs, const Document& rhs)
-            {
-                if (std::abs(lhs.relevance - rhs.relevance) < EPSILON)
-                {
-                    return lhs.rating > rhs.rating;
-                }
-                else
-                {
-                    return lhs.relevance > rhs.relevance;
-                }
-            });
-        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT)
-        {
-            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
-        }
-        return matched_documents;
-    }
+    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const;
 
-    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const
-    {
-        return SearchServer::FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
-    }
-
-    std::vector<Document> FindTopDocuments(const std::string& raw_query) const
-    {
-        return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
-    }
+    std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
 
     //Возвращает длину documents_
     int GetDocumentCount() const;
@@ -98,8 +72,8 @@ private:
     //Структура рейтинг, DocumentStatus(DocumentStatus::actuall,DocumentStatus::banned...)
     struct DocumentData
     {
-        int rating;
-        DocumentStatus status;
+        int rating = 0;
+        DocumentStatus status = DocumentStatus::ACTUAL;
     };
 
     std::set<std::string> stop_words_; //Множество стоп-слов
@@ -124,8 +98,8 @@ private:
     struct QueryWord
     {
         std::string data;
-        bool is_minus;
-        bool is_stop;
+        bool is_minus = false;
+        bool is_stop = false;
     };
 
     QueryWord ParseQueryWord(std::string word) const;
@@ -192,3 +166,28 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& out, const Document doc);
+
+template <typename DocumentPredicate>
+std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const
+{
+    const Query query = ParseQuery(raw_query);
+    auto matched_documents = FindAllDocuments(query, predicate);
+
+    sort(matched_documents.begin(), matched_documents.end(),
+        [](const Document& lhs, const Document& rhs)
+        {
+            if (std::abs(lhs.relevance - rhs.relevance) < EPSILON)
+            {
+                return lhs.rating > rhs.rating;
+            }
+            else
+            {
+                return lhs.relevance > rhs.relevance;
+            }
+        });
+    if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT)
+    {
+        matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+    }
+    return matched_documents;
+}

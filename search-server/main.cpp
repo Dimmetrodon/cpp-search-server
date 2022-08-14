@@ -13,7 +13,7 @@ using namespace std;
 int main()
 {
     setlocale(LC_ALL, "Russian");
-    SearchServer search_server;
+    SearchServer search_server("и в на"s);
 
 
     AddDocument(search_server, 1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });

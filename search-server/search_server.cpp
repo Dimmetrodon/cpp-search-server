@@ -59,7 +59,15 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         });
 }
 
+std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const
+{
+    return SearchServer::FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
+}
 
+std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const
+{
+    return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+}
 
 //Возвращает длину documents_
 int SearchServer::GetDocumentCount() const

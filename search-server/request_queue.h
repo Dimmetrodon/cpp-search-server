@@ -23,8 +23,8 @@ private:
     struct QueryResult
     {
         // определите, что должно быть в структуре
-        int request_time;
-        int results;
+        int request_time = 0;
+        int results = 0;
     };
     std::deque<QueryResult> requests_;
     const static int min_in_day_ = 1440;
