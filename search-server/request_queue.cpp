@@ -20,6 +20,7 @@ int RequestQueue::GetNoResultRequests() const
     }
     return empty_results;
 }
+
 void RequestQueue::MinsCheck()
 {
     if (current_mins_ != (min_in_day_))
@@ -39,4 +40,16 @@ void RequestQueue::MoveDeque()
     {
         requests_.pop_front();
     }
+}
+
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentStatus check_status)
+{
+    // напишите реализацию
+    return RequestQueue::AddFindRequest(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
+}
+
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query)
+{
+    // напишите реализацию
+    return RequestQueue::AddFindRequest(raw_query, DocumentStatus::ACTUAL);
 }

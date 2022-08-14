@@ -3,6 +3,7 @@
 #include <vector>
 #include "search_server.h"
 
+
 class RequestQueue
 {
 public:
@@ -10,32 +11,11 @@ public:
 
     // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
     template <typename DocumentPredicate>
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate)
-    {
-        // напишите реализацию
-        std::vector<Document> vec = search_server_.FindTopDocuments(raw_query, document_predicate);
-        MinsCheck();
-        MoveDeque();
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate); 
 
-        QueryResult result;
-        result.request_time = current_mins_;
-        result.results = vec.size();
-        requests_.push_back(result);
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus check_status);
 
-        return vec;
-    }
-
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus check_status)
-    {
-        // напишите реализацию
-        return AddFindRequest(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
-    }
-
-    std::vector<Document> AddFindRequest(const std::string& raw_query)
-    {
-        // напишите реализацию
-        return AddFindRequest(raw_query, DocumentStatus::ACTUAL);
-    }
+    std::vector<Document> AddFindRequest(const std::string& raw_query);
 
     int GetNoResultRequests() const;
 
@@ -57,3 +37,20 @@ private:
     void MoveDeque();
 
 };
+
+
+template <typename DocumentPredicate>
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate)
+{
+    // напишите реализацию
+    std::vector<Document> vec = search_server_.FindTopDocuments(raw_query, document_predicate);
+    MinsCheck();
+    MoveDeque();
+
+    QueryResult result;
+    result.request_time = current_mins_;
+    result.results = vec.size();
+    requests_.push_back(result);
+
+    return vec;
+}
