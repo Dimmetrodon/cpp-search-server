@@ -1,5 +1,6 @@
 #pragma once
 #include "document.h"
+#include "log_duration.h"
 #include<vector>
 #include<string>
 #include<iostream>
@@ -66,7 +67,15 @@ public:
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
 
-    int GetDocumentId(int index) const;
+    std::vector<int>::const_iterator begin() const;
+
+    std::vector<int>::const_iterator end() const;
+
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+
+    void RemoveDocument(int document_id);
+
+    std::vector<int> FindDuplicates();
 
 private:
     //Структура рейтинг, DocumentStatus(DocumentStatus::actuall,DocumentStatus::banned...)
@@ -78,12 +87,15 @@ private:
 
     std::set<std::string> stop_words_; //Множество стоп-слов
 
-    std::map<std::string, std::map<int, double>> word_to_document_freqs_; //Словарь: слово - словарь(id,частота встречи в документах)
+    std::map<std::string, std::map<int, double>> word_to_document_freqs_; //Словарь: слово - словарь(id,частота встречи в документах(TF))
 
     std::map<int, DocumentData> documents_; //Словарь: id - DocumentData(рейтинг, статус)
 
     std::vector<int> documents_ids_; // Вектор идентификаторов хранящий их по порядку добавления
 
+    std::map<int, std::map<std::string, double>> ids_to_word_to_freqs; // Словарь: id - слова - частота
+
+    std::map<int, std::set<std::string>> ids_to_words_; // Словарь id - все слова без повторов в документе
 
     static bool IsValidString(const std::string& text);
 

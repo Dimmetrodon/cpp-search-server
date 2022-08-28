@@ -1,5 +1,6 @@
 #include "search_server.h"
 #include "string_processing.h"
+#include "log_duration.h"
 #include <cmath>
 
 using namespace std;
@@ -21,7 +22,7 @@ SearchServer::SearchServer(const string& stop_words)
     }
 }
 
-void SearchServer::SetStopWords(const string& text)
+void SearchServer::SetStopWords(const string & text)
 {
     for (const string& word : SplitIntoWords(text))
     {
@@ -49,6 +50,8 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
     for (const string& word : words)
     {
         word_to_document_freqs_[word][document_id] += inv_word_count;
+        ids_to_word_to_freqs[document_id][word] += inv_word_count;
+        ids_to_words_[document_id].insert(word);
     }
     SearchServer::documents_ids_.push_back(document_id);
     SearchServer::documents_.emplace(document_id,
@@ -79,6 +82,7 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
 {
     const Query query = ParseQuery(raw_query);
     vector<string> matched_words;
+
     for (const string& word : query.plus_words)
     {
         if (word_to_document_freqs_.count(word) == 0)
@@ -90,6 +94,7 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
             matched_words.push_back(word);
         }
     }
+
     for (const string& word : query.minus_words)
     {
         if (word_to_document_freqs_.count(word) == 0)
@@ -102,16 +107,54 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
             break;
         }
     }
+
     return tuple{ matched_words, SearchServer::documents_.at(document_id).status };
 }
 
-int SearchServer::GetDocumentId(int index) const
+std::vector<int>::const_iterator SearchServer::begin() const
 {
-    if ((index < 0) || (index > SearchServer::GetDocumentCount()))
+    return documents_ids_.begin();
+}
+
+std::vector<int>::const_iterator SearchServer::end() const
+{
+    return documents_ids_.end();
+}
+
+const map<string, double>& SearchServer::GetWordFrequencies(int document_id) const
+{
+    if (find(this->begin(), this->end(), document_id) == this->end())
     {
-        throw out_of_range("Invalid index");
+        static const map<string, double> empty{};
+        return empty;
     }
-    return SearchServer::documents_ids_[index];
+    return ids_to_word_to_freqs.at(document_id);
+}
+
+void SearchServer::RemoveDocument(int document_id)
+{
+    ids_to_word_to_freqs.erase(document_id);
+    documents_ids_.erase(find(documents_ids_.begin(), documents_ids_.end(), document_id));
+    documents_.erase(document_id);
+    ids_to_words_.erase(document_id);
+}
+
+vector<int> SearchServer::FindDuplicates()
+{
+    vector<set<string>> checked_docs;
+    vector<int> result;
+    for (auto& [id, words] : ids_to_words_)
+    {
+        if (count(checked_docs.begin(), checked_docs.end(), words))
+        {
+            result.push_back(id);
+        }
+        else
+        {
+            checked_docs.push_back(words);
+        }
+    }
+    return result;
 }
 
 bool SearchServer::IsValidString(const string& text)
