@@ -57,9 +57,7 @@ public:
     //Сортирует и возвращает 5 лучших по релевантности документа
     template <typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const;
-
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const;
-
     std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
 
     //Возвращает длину documents_
@@ -67,15 +65,15 @@ public:
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
 
-    std::vector<int>::const_iterator begin() const;
+    std::set<int>::const_iterator begin() const;
 
-    std::vector<int>::const_iterator end() const;
+    std::set<int>::const_iterator end() const;
 
     const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
 
-    std::vector<int> FindDuplicates();
+    std::vector<int> FindDuplicates() const;
 
 private:
     //Структура рейтинг, DocumentStatus(DocumentStatus::actuall,DocumentStatus::banned...)
@@ -91,11 +89,15 @@ private:
 
     std::map<int, DocumentData> documents_; //Словарь: id - DocumentData(рейтинг, статус)
 
-    std::vector<int> documents_ids_; // Вектор идентификаторов хранящий их по порядку добавления
+    std::set<int> documents_ids_; // Идентификаторы
 
     std::map<int, std::map<std::string, double>> ids_to_word_to_freqs; // Словарь: id - слова - частота
 
     std::map<int, std::set<std::string>> ids_to_words_; // Словарь id - все слова без повторов в документе
+
+    std::map<std::string, std::map<int, bool>> words_to_ids_to_dublicate; //Словарь: слова документа - словарь(id, дубликат)
+    
+    std::map<int, bool> id_duplicate; // Словарь: Идентификатор - дубликат
 
     static bool IsValidString(const std::string& text);
 

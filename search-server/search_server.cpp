@@ -45,6 +45,7 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
     {
         throw invalid_argument("Forbidden symbols");
     }
+
     const vector<string> words = SearchServer::SplitIntoWordsNoStop(document);
     const double inv_word_count = 1.0 / words.size();
     for (const string& word : words)
@@ -53,8 +54,18 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         ids_to_word_to_freqs[document_id][word] += inv_word_count;
         ids_to_words_[document_id].insert(word);
     }
-    SearchServer::documents_ids_.push_back(document_id);
-    SearchServer::documents_.emplace(document_id,
+    if (words_to_ids_to_dublicate.count(document))
+    {
+        words_to_ids_to_dublicate[document][document_id] = true;
+        id_duplicate[document_id] =  true;
+    }
+    else
+    {
+        words_to_ids_to_dublicate[document][document_id] = false;
+        id_duplicate[document_id] = false;
+    }
+    documents_ids_.insert(document_id);
+    documents_.emplace(document_id,
         DocumentData
         {
             ComputeAverageRating(ratings),
@@ -62,11 +73,41 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         });
 }
 
+//vector<int> SearchServer::FindDuplicates() const
+//{
+//    vector<int> result;
+//    for (auto [id, dublicate] :id_duplicate)
+//    {
+//        if (dublicate == true)
+//        {
+//            result.push_back(id);
+//        }
+//    }
+//    return result;
+//}
+
+vector<int> SearchServer::FindDuplicates() const
+{
+    vector<set<string>> checked_docs;
+    vector<int> result;
+    for (auto& [id, words] : ids_to_words_)
+    {
+        if (count(checked_docs.begin(), checked_docs.end(), words))
+        {
+            result.push_back(id);
+        }
+        else
+        {
+            checked_docs.push_back(words);
+        }
+    }
+    return result;
+}
+
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const
 {
     return SearchServer::FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
 }
-
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const
 {
     return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
@@ -111,12 +152,12 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
     return tuple{ matched_words, SearchServer::documents_.at(document_id).status };
 }
 
-std::vector<int>::const_iterator SearchServer::begin() const
+std::set<int>::const_iterator SearchServer::begin() const
 {
     return documents_ids_.begin();
 }
 
-std::vector<int>::const_iterator SearchServer::end() const
+std::set<int>::const_iterator SearchServer::end() const
 {
     return documents_ids_.end();
 }
@@ -133,28 +174,22 @@ const map<string, double>& SearchServer::GetWordFrequencies(int document_id) con
 
 void SearchServer::RemoveDocument(int document_id)
 {
+    for (auto [word, TF] : ids_to_word_to_freqs.at(document_id))
+    {
+        if (word_to_document_freqs_.at(word).size() > 1)
+        {
+            auto pos = word_to_document_freqs_.at(word).find(document_id);
+            word_to_document_freqs_.at(word).erase(pos);
+        }
+        else
+        {
+            word_to_document_freqs_.erase(word);
+        }
+    }
     ids_to_word_to_freqs.erase(document_id);
     documents_ids_.erase(find(documents_ids_.begin(), documents_ids_.end(), document_id));
     documents_.erase(document_id);
     ids_to_words_.erase(document_id);
-}
-
-vector<int> SearchServer::FindDuplicates()
-{
-    vector<set<string>> checked_docs;
-    vector<int> result;
-    for (auto& [id, words] : ids_to_words_)
-    {
-        if (count(checked_docs.begin(), checked_docs.end(), words))
-        {
-            result.push_back(id);
-        }
-        else
-        {
-            checked_docs.push_back(words);
-        }
-    }
-    return result;
 }
 
 bool SearchServer::IsValidString(const string& text)
