@@ -75,34 +75,21 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
 
 //vector<int> SearchServer::FindDuplicates() const
 //{
+//    vector<set<string>> checked_docs;
 //    vector<int> result;
-//    for (auto [id, dublicate] :id_duplicate)
+//    for (auto& [id, words] : ids_to_words_)
 //    {
-//        if (dublicate == true)
+//        if (count(checked_docs.begin(), checked_docs.end(), words))
 //        {
 //            result.push_back(id);
+//        }
+//        else
+//        {
+//            checked_docs.push_back(words);
 //        }
 //    }
 //    return result;
 //}
-
-vector<int> SearchServer::FindDuplicates() const
-{
-    vector<set<string>> checked_docs;
-    vector<int> result;
-    for (auto& [id, words] : ids_to_words_)
-    {
-        if (count(checked_docs.begin(), checked_docs.end(), words))
-        {
-            result.push_back(id);
-        }
-        else
-        {
-            checked_docs.push_back(words);
-        }
-    }
-    return result;
-}
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const
 {

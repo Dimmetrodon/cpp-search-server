@@ -73,7 +73,8 @@ public:
 
     void RemoveDocument(int document_id);
 
-    std::vector<int> FindDuplicates() const;
+    std::map<int, std::set<std::string>> ids_to_words_;                     // Словарь id - все слова без повторов в документе
+
 
 private:
     //Структура рейтинг, DocumentStatus(DocumentStatus::actuall,DocumentStatus::banned...)
@@ -83,21 +84,13 @@ private:
         DocumentStatus status = DocumentStatus::ACTUAL;
     };
 
-    std::set<std::string> stop_words_; //Множество стоп-слов
-
-    std::map<std::string, std::map<int, double>> word_to_document_freqs_; //Словарь: слово - словарь(id,частота встречи в документах(TF))
-
-    std::map<int, DocumentData> documents_; //Словарь: id - DocumentData(рейтинг, статус)
-
-    std::set<int> documents_ids_; // Идентификаторы
-
-    std::map<int, std::map<std::string, double>> ids_to_word_to_freqs; // Словарь: id - слова - частота
-
-    std::map<int, std::set<std::string>> ids_to_words_; // Словарь id - все слова без повторов в документе
-
-    std::map<std::string, std::map<int, bool>> words_to_ids_to_dublicate; //Словарь: слова документа - словарь(id, дубликат)
-    
-    std::map<int, bool> id_duplicate; // Словарь: Идентификатор - дубликат
+    std::set<std::string> stop_words_;                                      //Множество стоп-слов
+    std::map<std::string, std::map<int, double>> word_to_document_freqs_;   //Словарь: слово - словарь(id,частота встречи в документах(TF))
+    std::map<int, DocumentData> documents_;                                 //Словарь: id - DocumentData(рейтинг, статус)
+    std::set<int> documents_ids_;                                           // Идентификаторы
+    std::map<int, std::map<std::string, double>> ids_to_word_to_freqs;      // Словарь: id - слова - частота
+    std::map<std::string, std::map<int, bool>> words_to_ids_to_dublicate;   //Словарь: слова документа - словарь(id, дубликат)
+    std::map<int, bool> id_duplicate;                                       // Словарь: Идентификатор - дубликат
 
     static bool IsValidString(const std::string& text);
 
