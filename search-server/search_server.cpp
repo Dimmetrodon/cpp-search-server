@@ -79,29 +79,52 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
         });
 }
 
-//vector<int> SearchServer::FindDuplicates() const
-//{
-//    vector<set<string>> checked_docs;
-//    vector<int> result;
-//    for (auto& [id, words] : ids_to_words_)
-//    {
-//        if (count(checked_docs.begin(), checked_docs.end(), words))
-//        {
-//            result.push_back(id);
-//        }
-//        else
-//        {
-//            checked_docs.push_back(words);
-//        }
-//    }
-//    return result;
-//}
+void SearchServer::AddDocument(int document_id, const string_view document, DocumentStatus status, const vector<int>& ratings)
+{
+    if (documents_.count(document_id) == 1)
+    {
+        throw invalid_argument("id is taken");
+    }
+    else if (document_id < 0)
+    {
+        throw invalid_argument("id value should not be less than 0");
+    }
+    else if (!SearchServer::IsValidStringView(document))
+    {
+        throw invalid_argument("Forbidden symbols");
+    }
+
+    const vector<string_view> words = SearchServer::SplitIntoWordsNoStopView(document);
+    const double inv_word_count = 1.0 / words.size();
+    for (string_view word : words)
+    {
+        word_to_document_freqs_[string(word)][document_id] += inv_word_count;
+        ids_to_word_to_freqs[document_id][string(word)] += inv_word_count;
+        ids_to_words_[document_id].insert(string(word));
+    }
+    documents_ids_.insert(document_id);
+    documents_.emplace(document_id,
+        DocumentData
+        {
+            ComputeAverageRating(ratings),
+            status
+        });
+}
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const
 {
     return SearchServer::FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
 }
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const
+{
+    return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+}
+
+std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query, DocumentStatus check_status) const
+{
+    return SearchServer::FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
+}
+std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query) const
 {
     return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
 }
@@ -394,6 +417,50 @@ SearchServer::Query SearchServer::ParseQuery(const string& text) const
     sort(
         //execution::par,
         query.plus_words.begin(), query.plus_words.end());
+    auto plus_words_end = unique(query.plus_words.begin(), query.plus_words.end());
+    query.plus_words.resize(distance(query.plus_words.begin(), plus_words_end));
+
+    //sort(execution::par, query.minus_words.begin(), query.minus_words.end());
+    //auto minus_words_end = unique(query.minus_words.begin(), query.minus_words.end());
+    //query.minus_words.resize(distance(query.minus_words.begin(), minus_words_end));
+
+    return query;
+}
+
+SearchServer::Query SearchServer::ParseQuery(string_view text) const
+{
+    if (!IsValidStringView(text))
+    {
+        throw invalid_argument("Forbidden symbols");
+    }
+
+    Query query;
+    vector<string_view> split_words = SplitIntoWordsView(text);
+
+    for (string_view word : split_words)
+    {
+        if (!IsStopWordView(word))
+        {
+            if (word[0] == '-')
+            {
+                word = word.substr(1);
+                if (word.empty())
+                {
+                    throw invalid_argument("No text after minus");
+                }
+                if (word[0] == '-')
+                {
+                    throw invalid_argument("Multiple minuses");
+                }
+                query.minus_words.push_back(string(word));
+                continue;
+            }
+            query.plus_words.push_back(string(word));
+        }
+    }
+
+
+    sort(query.plus_words.begin(), query.plus_words.end());
     auto plus_words_end = unique(query.plus_words.begin(), query.plus_words.end());
     query.plus_words.resize(distance(query.plus_words.begin(), plus_words_end));
 

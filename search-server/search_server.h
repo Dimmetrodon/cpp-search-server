@@ -56,12 +56,18 @@ public:
 
     //Добавляет в documents_ id, средний рейтинг, статус
     void AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings);
+    void AddDocument(int document_id, std::string_view document, DocumentStatus status, const std::vector<int>& ratings);
 
     //Сортирует и возвращает 5 лучших по релевантности документа
     template <typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const;
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const;
     std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
+
+    template <typename DocumentPredicate>
+    std::vector<Document> FindTopDocuments(std::string_view raw_query, DocumentPredicate predicate) const;
+    std::vector<Document> FindTopDocuments(std::string_view raw_query, DocumentStatus check_status) const;
+    std::vector<Document> FindTopDocuments(std::string_view raw_query) const;
 
     //Возвращает длину documents_
     int GetDocumentCount() const;
@@ -118,6 +124,7 @@ private:
     };
 
     QueryWord ParseQueryWord(std::string word) const;
+    QueryWord ParseQueryWord(std::string_view word) const;
 
     //Структура множество плюс-слов - множество минус-слов
     struct Query
@@ -128,6 +135,7 @@ private:
 
     //Делает из строки множества плюс и минус слов
     Query ParseQuery(const std::string& text) const;
+    Query ParseQuery(std::string_view text) const;
 
     // Existence required
     double ComputeWordInverseDocumentFreq(const std::string& word) const;
@@ -184,6 +192,31 @@ std::ostream& operator<<(std::ostream& out, const Document doc);
 
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const
+{
+    const Query query = ParseQuery(raw_query);
+    auto matched_documents = FindAllDocuments(query, predicate);
+
+    sort(matched_documents.begin(), matched_documents.end(),
+        [](const Document& lhs, const Document& rhs)
+        {
+            if (std::abs(lhs.relevance - rhs.relevance) < EPSILON)
+            {
+                return lhs.rating > rhs.rating;
+            }
+            else
+            {
+                return lhs.relevance > rhs.relevance;
+            }
+        });
+    if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT)
+    {
+        matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+    }
+    return matched_documents;
+}
+
+template <typename DocumentPredicate>
+std::vector<Document> SearchServer::FindTopDocuments(const std::string_view raw_query, DocumentPredicate predicate) const
 {
     const Query query = ParseQuery(raw_query);
     auto matched_documents = FindAllDocuments(query, predicate);
