@@ -37,3 +37,5 @@
 *.vcxproj.user
 *Debug
 /search-server/.vs/cpp-search-server
+.exp
+.pdb

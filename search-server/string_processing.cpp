@@ -1,25 +1,27 @@
 #include "string_processing.h"
 
-std::string ReadLine()
+using namespace std;
+
+string ReadLine()
 {
-    std::string s;
-    getline(std::cin, s);
+    string s;
+    getline(cin, s);
     return s;
 }
 
 int ReadLineWithNumber()
 {
     int result;
-    std::cin >> result;
+    cin >> result;
     ReadLine();
     return result;
 }
 
 //Дробит строку в слова
-std::vector<std::string> SplitIntoWords(const std::string& text)
+vector<string> SplitIntoWords(const std::string& text)
 {
-    std::vector<std::string> words;
-    std::string word;
+    vector<string> words;
+    string word;
     for (const char c : text)
     {
         if (c == ' ')
@@ -41,4 +43,20 @@ std::vector<std::string> SplitIntoWords(const std::string& text)
     }
 
     return words;
+}
+
+vector<string_view> SplitIntoWordsView(const string_view str) 
+{
+    vector<string_view> result;
+    int64_t pos = str.find_first_not_of(" ");
+    const int64_t pos_end = str.npos;
+
+    while (pos != pos_end) 
+    {
+        int64_t space = str.find(' ', pos);
+        result.push_back(space == pos_end ? str.substr(pos) : str.substr(pos, space - pos));
+        pos = str.find_first_not_of(" ", space);
+    }
+
+    return result;
 }

@@ -3,11 +3,13 @@
 #include "log_duration.h"
 #include<vector>
 #include<string>
+#include<string_view>
 #include<iostream>
 #include<set>
 #include<map>
 #include <algorithm>
 #include <numeric>
+#include <execution>
 
 const double EPSILON = 1e-6; //Число для сравнения double чисел
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
@@ -30,9 +32,10 @@ public:
 
     //Конструктор для string стоп-слов
     explicit SearchServer(const std::string& stop_words);
+    explicit SearchServer(std::string_view stop_words);
 
     //Конструктор для set и vector стоп-слов
-    template <typename Container>
+    /*template <typename Container>
     explicit SearchServer(const Container& container)
     {
         using namespace std::literals;
@@ -47,7 +50,7 @@ public:
                 stop_words_.insert(word);
             }
         }
-    }
+    }*/
 
     void SetStopWords(const std::string& text);
 
@@ -64,6 +67,8 @@ public:
     int GetDocumentCount() const;
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
+    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(std::execution::parallel_policy, const std::string& raw_query, int document_id) const;
+    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(std::execution::sequenced_policy, const std::string& raw_query, int document_id) const;
 
     std::set<int>::const_iterator begin() const;
 
@@ -72,6 +77,8 @@ public:
     const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
+    void RemoveDocument(std::execution::parallel_policy, int document_id);
+    void RemoveDocument(std::execution::sequenced_policy, int document_id);
 
     std::map<int, std::set<std::string>> ids_to_words_;                     // Словарь id - все слова без повторов в документе
 
@@ -89,15 +96,16 @@ private:
     std::map<int, DocumentData> documents_;                                 //Словарь: id - DocumentData(рейтинг, статус)
     std::set<int> documents_ids_;                                           // Идентификаторы
     std::map<int, std::map<std::string, double>> ids_to_word_to_freqs;      // Словарь: id - слова - частота
-    std::map<std::string, std::map<int, bool>> words_to_ids_to_dublicate;   //Словарь: слова документа - словарь(id, дубликат)
-    std::map<int, bool> id_duplicate;                                       // Словарь: Идентификатор - дубликат
 
     static bool IsValidString(const std::string& text);
+    static bool IsValidStringView(std::string_view text);
 
     bool IsStopWord(const std::string& word) const;
+    bool IsStopWordView(std::string_view word) const;
 
     //Из строки в вектор слов, исключая стоп-слова
     std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
+    std::vector<std::string_view> SplitIntoWordsNoStopView(std::string_view text) const;
 
     static int ComputeAverageRating(const std::vector<int>& ratings);
 
@@ -114,8 +122,8 @@ private:
     //Структура множество плюс-слов - множество минус-слов
     struct Query
     {
-        std::set<std::string> plus_words;
-        std::set<std::string> minus_words;
+        std::vector<std::string> plus_words;
+        std::vector<std::string> minus_words;
     };
 
     //Делает из строки множества плюс и минус слов
