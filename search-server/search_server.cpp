@@ -204,6 +204,74 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(std::execution
         return { matched_words, status };
 }
 
+tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_view raw_query, int document_id) const
+{
+    const Query query = ParseQuery(raw_query);
+    vector<string_view> matched_words;
+
+    for (string_view word : query.plus_words)
+    {
+        if (word_to_document_freqs_.count(string(word)) == 0)
+        {
+            continue;
+        }
+        if (word_to_document_freqs_.at(string(word)).count(document_id))
+        {
+            matched_words.push_back(word);
+        }
+    }
+
+    for (const string& word : query.minus_words)
+    {
+        if (word_to_document_freqs_.count(word) == 0)
+        {
+            continue;
+        }
+        if (word_to_document_freqs_.at(word).count(document_id))
+        {
+            matched_words.clear();
+            break;
+        }
+    }
+
+    return tuple{ matched_words, SearchServer::documents_.at(document_id).status };
+}
+
+tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(std::execution::sequenced_policy policy, string_view raw_query, int document_id) const
+{
+    return MatchDocument(raw_query, document_id);
+}
+
+tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view raw_query, int document_id) const
+{
+    Query query = ParseQuery(raw_query);
+    DocumentStatus status = documents_.at(document_id).status;
+
+    vector<string_view> matched_words(query.plus_words.size());
+    if (any_of(
+        query.minus_words.begin(), query.minus_words.end(),
+        [document_id, &itwtf = ids_to_word_to_freqs](const auto& word)
+        {
+            return itwtf.at(document_id).count(word);
+        }))
+    {
+        return { {}, documents_.at(document_id).status };
+    }
+
+        auto it_end = copy_if(
+            query.plus_words.begin(), query.plus_words.end(),
+            matched_words.begin(),
+            [&](const string& word)
+            {
+                return ids_to_word_to_freqs.at(document_id).count(word);
+            });
+
+        sort(matched_words.begin(), it_end);
+        auto it_end1 = unique(matched_words.begin(), it_end);
+        matched_words.erase(it_end1, matched_words.end());
+        return { matched_words, status };
+}
+
 
 std::set<int>::const_iterator SearchServer::begin() const
 {
