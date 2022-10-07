@@ -60,14 +60,7 @@ public:
     void SetStopWords(const std::string& text);
 
     //Добавляет в documents_ id, средний рейтинг, статус
-    //void AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings);
     void AddDocument(int document_id, std::string_view document, DocumentStatus status, const std::vector<int>& ratings);
-
-    //Сортирует и возвращает 5 лучших по релевантности документа
-    /*template <typename DocumentPredicate>
-    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const;
-    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus check_status) const;
-    std::vector<Document> FindTopDocuments(const std::string& raw_query) const;*/
 
     template <typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(std::string_view raw_query, DocumentPredicate predicate) const;
@@ -76,10 +69,6 @@ public:
 
     //Возвращает длину documents_
     int GetDocumentCount() const;
-
-    /*std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
-    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(std::execution::parallel_policy, const std::string& raw_query, int document_id) const;
-    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(std::execution::sequenced_policy, const std::string& raw_query, int document_id) const;*/
 
     std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(std::string_view raw_query, int document_id) const;
     std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(std::execution::parallel_policy, std::string_view raw_query, int document_id) const;
@@ -113,14 +102,11 @@ private:
     std::set<int> documents_ids_;                                           // Идентификаторы
     std::map<int, std::map<std::string_view, double>> ids_to_word_to_freqs;      // Словарь: id - слова - частота
 
-    //static bool IsValidString(const std::string& text);
     static bool IsValidString(std::string_view text);
 
-    //bool IsStopWord(const std::string& word) const;
     bool IsStopWord(std::string_view word) const;
 
     //Из строки в вектор слов, исключая стоп-слова
-    //std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
     std::vector<std::string_view> SplitIntoWordsNoStop(std::string_view text) const;
 
     static int ComputeAverageRating(const std::vector<int>& ratings);
@@ -133,7 +119,6 @@ private:
         bool is_stop = false;
     };
 
-    //QueryWord ParseQueryWord(std::string word) const;
     QueryWord ParseQueryWord(std::string_view word) const;
 
     //Структура множество плюс-слов - множество минус-слов
@@ -144,7 +129,6 @@ private:
     };
 
     //Делает из строки множества плюс и минус слов
-    //Query ParseQuery(const std::string& text) const;
     Query ParseQuery(std::string_view text) const;
 
     // Existence required
@@ -199,31 +183,6 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& out, const Document doc);
-
-//template <typename DocumentPredicate>
-//std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate predicate) const
-//{
-//    const Query query = ParseQuery(raw_query);
-//    auto matched_documents = FindAllDocuments(query, predicate);
-//
-//    sort(matched_documents.begin(), matched_documents.end(),
-//        [](const Document& lhs, const Document& rhs)
-//        {
-//            if (std::abs(lhs.relevance - rhs.relevance) < EPSILON)
-//            {
-//                return lhs.rating > rhs.rating;
-//            }
-//            else
-//            {
-//                return lhs.relevance > rhs.relevance;
-//            }
-//        });
-//    if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT)
-//    {
-//        matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
-//    }
-//    return matched_documents;
-//}
 
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string_view raw_query, DocumentPredicate predicate) const
