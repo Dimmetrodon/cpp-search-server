@@ -9,13 +9,13 @@ void PrintDocument(const Document& document)
         << "rating = "s << document.rating << " }"s << endl;
 }
 
-void PrintMatchDocumentResult(int document_id, const vector<string>& words, DocumentStatus status)
+void PrintMatchDocumentResult(int document_id, const vector<string_view>& words, DocumentStatus status)
 {
     cout << "{ "s
         << "document_id = "s << document_id << ", "s
         << "status = "s << static_cast<int>(status) << ", "s
         << "words ="s;
-    for (const string& word : words)
+    for (string_view word : words)
     {
         cout << ' ' << word;
     }
