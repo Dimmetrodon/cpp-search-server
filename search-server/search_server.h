@@ -187,7 +187,10 @@ std::ostream& operator<<(std::ostream& out, const Document doc);
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string_view raw_query, DocumentPredicate predicate) const
 {
-    const Query query = ParseQuery(raw_query);
+    Query query = ParseQuery(raw_query);
+    sort(query.plus_words.begin(), query.plus_words.end());
+    auto plus_words_end = unique(query.plus_words.begin(), query.plus_words.end());
+    query.plus_words.resize(distance(query.plus_words.begin(), plus_words_end));
     auto matched_documents = FindAllDocuments(query, predicate);
 
     sort(matched_documents.begin(), matched_documents.end(),
