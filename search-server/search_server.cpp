@@ -91,6 +91,24 @@ std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query)
     return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
 }
 
+std::vector<Document> SearchServer::FindTopDocuments(execution::sequenced_policy policy, std::string_view raw_query, DocumentStatus check_status) const
+{
+    return SearchServer::FindTopDocuments(raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
+}
+std::vector<Document> SearchServer::FindTopDocuments(execution::sequenced_policy policy, std::string_view raw_query) const
+{
+    return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+}
+
+std::vector<Document> SearchServer::FindTopDocuments(execution::parallel_policy policy, std::string_view raw_query, DocumentStatus check_status) const
+{
+    return SearchServer::FindTopDocuments(policy, raw_query, [check_status](int document_id, DocumentStatus status, int rating) { return status == check_status; });
+}
+std::vector<Document> SearchServer::FindTopDocuments(execution::parallel_policy policy, std::string_view raw_query) const
+{
+    return SearchServer::FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
+}
+
 //Возвращает длину documents_
 int SearchServer::GetDocumentCount() const
 {
@@ -112,8 +130,8 @@ tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_vi
         if (word_to_document_freqs_.at(word).count(document_id))
         {
             matched_words.clear();
-            break;
-            //return { {}, documents_.at(document_id).status };
+            //break;
+            return { {}, documents_.at(document_id).status };
         }
     }
 
